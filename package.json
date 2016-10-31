@@ -1,0 +1,25 @@
+{
+  "name": "codecat",
+  "version": "0.1.0",
+  "description": "A CodeKit/Prepros-style method of concatenating javascript and coffeescript files",
+  "main": "dist/codecat.js",
+  "scripts": {
+    "test": "cake test",
+    "build": "cake build"
+  },
+  "keywords": [
+    "codekit",
+    "prepros",
+    "concatenate",
+    "prepend",
+    "append",
+    "code",
+    "coffeescript"
+  ],
+  "author": {
+    "name": "Sean Wilson",
+    "email": "scw@adque.com",
+    "url": "http://seanwilson.me"
+  },
+  "license": "MIT"
+}

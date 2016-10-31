@@ -1,0 +1,7 @@
+# node & npm related stuff
+node_modules/
+node_modules
+npm-debug.log*
+
+# Visual Studio Code files
+.vscode/
