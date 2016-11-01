@@ -21,5 +21,16 @@
     "email": "scw@adque.com",
     "url": "http://seanwilson.me"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "coffee-script": "^1.11.1",
+    "karma": "^1.3.0",
+    "karma-chai": "^0.1.0",
+    "karma-coffee-preprocessor": "^1.0.1",
+    "karma-mocha": "^1.2.0",
+    "karma-phantomjs-launcher": "^1.0.2",
+    "mocha": "^3.1.2",
+    "phantomjs-prebuilt": "^2.1.13"
+  }
 }
