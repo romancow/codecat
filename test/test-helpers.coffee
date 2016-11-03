@@ -19,15 +19,17 @@ given = (name, fn) ->
 
 subject = (fn) -> given('subject', fn)
 
-useTempFiles = (fileMap, useFn) ->
+useTempFiles = (tempFiles) ->
 	before 'creating temp files', ->
-		for file, data of fileMap
+		for file, data of tempFiles
 			path = Path.join('test', 'temp', file)
 			writeFileSync(path, data)
 	after 'deleting temp files', ->
-		for file of fileMap
+		for file of tempFiles
 			path = Path.join('test', 'temp', file)
 			unlinkSync(path)
+	tempFiles
+	
 
 Function::check = (expectation) ->
 	try

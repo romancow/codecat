@@ -1,10 +1,14 @@
-{expect} = require 'chai'
+chai = require 'chai'
+chai.use(require 'chai-string')
+chai.use(require 'chai-fs')
+{expect} = chai
+{readFileSync} = require 'fs'
 {given, subject, useTempFiles} = require './test-helpers.coffee'
 CodeCat = require '../src/codecat.coffee'
 
 describe 'CodeCat', ->
-
-	subject -> new CodeCat('./test/temp/main.js')
+	given 'source', -> './test/temp/main.js'
+	subject -> new CodeCat(@source)
 
 	describe '.constructor', ->
 
@@ -12,8 +16,7 @@ describe 'CodeCat', ->
 			expect(@subject).to.be.an.instanceof(CodeCat)
 
 	describe 'with javascript', ->
-
-		useTempFiles
+		tempFiles = useTempFiles
 			'main.js': '''
 				// @codecat-prepend "prepend1.js"
 				// @codecat-append "append1.js"
@@ -39,5 +42,137 @@ describe 'CodeCat', ->
 					done.check ->
 						expect(append).to.eql(['append1.js', 'append2.js'])
 
+		describe '#concat', ->
+
+			it 'has original file contents', (done) ->
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.contain(tempFiles['main.js'])
+
+			it 'prepends file contents', (done) ->
+				prepended = ['prepend1.js', 'prepend2.js']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.startWith(prepended)
+
+			it 'appends files contents', (done) ->
+				appended = ['append1.js', 'append2.js']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.endWith(appended)
+			
+		describe '#concatTo', ->
+			given 'destination', -> 'test/temp/result.js'
+			given 'fileContent', -> readFileSync(@destination, encoding: 'utf8')
+
+			it 'creates a file', (done) ->
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@destination).to.be.a.file()
+
+			it 'has orignal file', (done) ->
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@fileContent).to.contain(tempFiles['main.js'])
+
+			it 'prepends files', (done) ->
+				prepended = ['prepend1.js', 'prepend2.js']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@fileContent).to.startWith(prepended)
+
+			it 'appends files', (done) ->
+				appended = ['append1.js', 'append2.js']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@fileContent).to.endWith(appended)
+
 	describe 'with coffeescript', ->
-		undefined
+		given 'source', -> './test/temp/main.coffee'
+
+		tempFiles = useTempFiles
+			'main.coffee': '''
+				# @codecat-prepend "prepend1.coffee"
+				# @codecat-append "append1.coffee"
+				# @codecat-prepend "prepend2.coffee"
+				# @codecat-append "append2.coffee"
+				
+				main = true
+				'''
+			'prepend1.coffee': 'prepend1 = true'
+			'append1.coffee': 'append1 = true'
+			'prepend2.coffee': 'prepend2 = true'
+			'append2.coffee': 'append2 = true'
+
+		describe '#findConcats', ->
+
+			it 'finds prepends', (done) ->
+				@subject.findConcats ({prepend}) ->
+					done.check ->
+						expect(prepend).to.eql(['prepend1.coffee', 'prepend2.coffee'])
+
+			it 'finds appends', (done) ->
+				@subject.findConcats ({append}) ->
+					done.check ->
+						expect(append).to.eql(['append1.coffee', 'append2.coffee'])
+
+		describe '#concat', ->
+
+			it 'has original file contents', (done) ->
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.contain(tempFiles['main.coffee'])
+
+			it 'prepends file contents', (done) ->
+				prepended = ['prepend1.coffee', 'prepend2.coffee']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.startWith(prepended)
+
+			it 'appends files contents', (done) ->
+				appended = ['append1.coffee', 'append2.coffee']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.endWith(appended)
+			
+		describe '#concatTo', ->
+			given 'destination', -> 'test/temp/result.coffee'
+			given 'fileContent', -> readFileSync(@destination, encoding: 'utf8')
+
+			it 'creates a file', (done) ->
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@destination).to.be.a.file()
+
+			it 'has orignal file', (done) ->
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@fileContent).to.contain(tempFiles['main.coffee'])
+
+			it 'prepends files', (done) ->
+				prepended = ['prepend1.coffee', 'prepend2.coffee']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@fileContent).to.startWith(prepended)
+
+			it 'appends files', (done) ->
+				appended = ['append1.coffee', 'append2.coffee']
+					.map (name) -> tempFiles[name]
+					.join('\n')
+				@subject.concatTo @destination, =>
+					done.check =>
+						expect(@fileContent).to.endWith(appended)
