@@ -39,38 +39,48 @@ module.exports = class CodeCat
 		lineReader.on 'close', ->
 			callback?(prepend: prepends, append: appends)
 
-	concat: (options, callback) ->
+	concat: (options = {}, callback) ->
+		[options, callback] = [{}, options] if options instanceof Function
 		{newline = EOL} = options
-		@findConcats (concats) ->
+		@findConcats (concats) =>
 			concatted = ''
-			concats?.prepends?.forEach (prepend) ->
-				concatted += readFileSync(prepend, encoding: @encoding)
-				concatted += newline
+			concats?.prepend?.map (prepend) => @getRelativePath(prepend)
+				.forEach (prependPath) ->
+					concatted += readFileSync(prependPath, encoding: @encoding)
+					concatted += newline
 			concatted += readFileSync(@source, encoding: @encoding)
-			concats?.appends?.forEach (append) ->
-				concatted += newline
-				concatted += readFileSync(append, encoding: @encoding)
+			concats?.append?.map (append) => @getRelativePath(append)
+				.forEach (appendPath) ->
+					concatted += newline
+					concatted += readFileSync(appendPath, encoding: @encoding)
 			callback?(concatted)
 
 	concatTo: (file, options, callback) ->
+		[options, callback] = [{}, options] if options instanceof Function
 		{newline = EOL} = options
-		@findConcats (concats) ->
+		@findConcats (concats) =>
 			error = null
 			stream = createWriteStream(file, defaultEncoding: @encoding)
-			stream.once 'open', ->
-				concats?.prepends?.forEach (prepend) ->
-					write = readFileSync(prepend, encoding: @encoding)
-					write += newline
-					stream.write(write)
+			stream.once 'open', =>
+				concats?.prepend?.map (prepend) => @getRelativePath(prepend)
+					.forEach (prependPath) ->
+						write = readFileSync(prependPath, encoding: @encoding)
+						write += newline
+						stream.write(write)
 				write = readFileSync(@source, encoding: @encoding)
 				stream.write(write)
-				concats?.appends?.forEach (append) ->
-					write = newline
-					write += readFileSync(append, encoding: @encoding)
-					stream.write(write)
-				stream.end()
-				callback?(error)
+				concats?.append?.map (append) => @getRelativePath(append)
+					.forEach (appendPath) ->
+						write = newline
+						write += readFileSync(appendPath, encoding: @encoding)
+						stream.write(write)
+				stream.end ->
+					callback?(error)
 
+	getRelativePath: (file) ->
+		sourceDir = Path.dirname(@source)
+		Path.join(sourceDir, file)
+	
 	@Commenters =
 		'': '//'
 		js: '//'
