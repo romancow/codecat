@@ -4,8 +4,11 @@
   "description": "A CodeKit/Prepros-style method of concatenating javascript and coffeescript files",
   "main": "dist/codecat.js",
   "scripts": {
+    "lint": "cake lint",
     "test": "cake test",
-    "build": "cake build"
+    "build": "cake build",
+    "prepublish": "cake prepublish",
+    "postversion": "cake build"
   },
   "keywords": [
     "codekit",
@@ -27,6 +30,7 @@
     "chai-fs": "^1.0.0",
     "chai-string": "^1.2.0",
     "coffee-script": "^1.11.1",
+    "coffeelint": "^1.16.0",
     "mocha": "^3.1.2"
   }
 }
