@@ -2,7 +2,7 @@ chai = require 'chai'
 chai.use(require 'chai-string')
 chai.use(require 'chai-fs')
 {expect} = chai
-{readFileSync} = require 'fs'
+{readFileSync, unlink} = require 'fs'
 {given, subject, useTempFiles} = require './test-helpers.coffee'
 CodeCat = require '../src/codecat.coffee'
 
@@ -68,6 +68,8 @@ describe 'CodeCat', ->
 		describe '#concatTo', ->
 			given 'destination', -> 'test/temp/result.js'
 			given 'fileContent', -> readFileSync(@destination, encoding: 'utf8')
+
+			after 'delete result file', -> unlink(@destination)
 
 			it 'creates a file', (done) ->
 				@subject.concatTo @destination, =>
@@ -150,6 +152,8 @@ describe 'CodeCat', ->
 		describe '#concatTo', ->
 			given 'destination', -> 'test/temp/result.coffee'
 			given 'fileContent', -> readFileSync(@destination, encoding: 'utf8')
+
+			after 'delete result file', -> unlink(@destination)
 
 			it 'creates a file', (done) ->
 				@subject.concatTo @destination, =>
