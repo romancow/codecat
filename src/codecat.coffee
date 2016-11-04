@@ -1,6 +1,7 @@
 {EOL} = require 'os'
 Readline = require 'readline'
 {readFileSync, createReadStream, createWriteStream} = require 'fs'
+{Writable} = require 'stream'
 Path = require 'path'
 
 module.exports = class CodeCat
@@ -25,57 +26,39 @@ module.exports = class CodeCat
 			appendRegexp:
 				value: getDirectiveRegExp('append')
 
-	findConcats: (callback) ->
-		[prepends, appends] = [[], []]
+	findConcats: (options, callback) ->
+		[{relative = false}, callback] = discernOptions(options, callback)
+		{prepend, append} = concats = {prepend: [], append: []}
 		lineReader = Readline.createInterface
 			input: createReadStream(@source, encoding: @encoding)
 
 		lineReader.on 'line', (line) =>
 			if match = line.match(@prependRegexp)?[2]
-				prepends.push(match)
+				prepend.push(match)
 			else if match = line.match(@appendRegexp)?[2]
-				appends.push(match)
+				append.push(match)
 
-		lineReader.on 'close', ->
-			callback?(prepend: prepends, append: appends)
+		lineReader.on 'close', =>
+			concats = mapConcats(concats, @getRelativePath, this) if relative
+			callback?(concats)
 
-	concat: (options = {}, callback) ->
-		[options, callback] = [{}, options] if options instanceof Function
-		{newline = EOL} = options
-		@findConcats (concats) =>
-			concatted = ''
-			concats?.prepend?.map (prepend) => @getRelativePath(prepend)
-				.forEach (prependPath) ->
-					concatted += readFileSync(prependPath, encoding: @encoding)
-					concatted += newline
-			concatted += readFileSync(@source, encoding: @encoding)
-			concats?.append?.map (append) => @getRelativePath(append)
-				.forEach (appendPath) ->
-					concatted += newline
-					concatted += readFileSync(appendPath, encoding: @encoding)
-			callback?(concatted)
+	concat: (options, callback) ->
+		[options, callback] = discernOptions(options, callback)
+		concatted = ''
+		write = (chunk, encoding, cb) ->
+			concatted += chunk
+			cb?(null)
+		stream = new Writable(write: write)
+		@concatTo stream, options, (error) -> callback?(concatted)
 
-	concatTo: (file, options, callback) ->
-		[options, callback] = [{}, options] if options instanceof Function
-		{newline = EOL} = options
-		@findConcats (concats) =>
+	concatTo: (dest, options, callback) ->
+		[{separator = EOL}, callback] = discernOptions(options, callback)
+		@findConcats relative: true, (concats) =>
 			error = null
-			stream = createWriteStream(file, defaultEncoding: @encoding)
-			stream.once 'open', =>
-				concats?.prepend?.map (prepend) => @getRelativePath(prepend)
-					.forEach (prependPath) ->
-						write = readFileSync(prependPath, encoding: @encoding)
-						write += newline
-						stream.write(write)
-				write = readFileSync(@source, encoding: @encoding)
-				stream.write(write)
-				concats?.append?.map (append) => @getRelativePath(append)
-					.forEach (appendPath) ->
-						write = newline
-						write += readFileSync(appendPath, encoding: @encoding)
-						stream.write(write)
-				stream.end ->
-					callback?(error)
+			paths = [concats.prepend..., @source, concats.append...]
+			ensureStream dest, defaultEncoding: @encoding, (stream) ->
+				joinFiles(paths, @encoding, separator, stream)
+				stream.end -> callback?(error)
 
 	getRelativePath: (file) ->
 		sourceDir = Path.dirname(@source)
@@ -86,10 +69,43 @@ module.exports = class CodeCat
 		js: '//'
 		coffee: '#'
 
+	# Private helper functions
+
 	getSourceCommenter = (source) ->
 		ext = Path.extname(source).slice(1)
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
 
+	joinFiles = (paths, encoding, separator, stream) ->
+		paths.forEach (path, notFirst) ->
+			output = (notFirst and separator) or ''
+			output += readFileSync(path, encoding: encoding)
+			stream.write(output)
+
+	ensureStream = (dest, options, fn) ->
+		[options, fn] = discernOptions(options, fn)
+		if isString(dest)
+			stream = createWriteStream(dest, options)
+			stream.once('open', -> fn(stream))
+		else
+			fn(dest)
+
+	mapConcats = (concats, map, thisArg) ->
+		mapped = {}
+		for own type, files of concats
+			mapped[type] = files.map(map, thisArg)
+		return mapped
+
+	# General utility functions
+
 	regexpEscape = (str) ->
 		str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')
+	
+	isString = (val) ->
+		(typeof val is 'string') or (val instanceof String)
+
+	discernOptions = (options, fn) ->
+		if options instanceof Function
+			[{}, options]
+		else
+			[options ? {}, fn]
