@@ -9,7 +9,7 @@ task 'lint', 'Lint project coffeescript', (options) ->
 	tryExecSync("coffeelint #{srcFile}")
 
 task 'test', 'Run tests on project coffeescript', (options) ->
-	tryExecSync('mocha', compilers: 'coffee:coffee-script/register')
+	tryExecSync('mocha')
 
 task 'build', 'Build project with header', (options) ->
 	return unless invoke('lint')
