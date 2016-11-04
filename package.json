@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "description": "A CodeKit/Prepros-style method of concatenating javascript and coffeescript files",
   "main": "dist/codecat.js",
+  "copyright": "Data Concepts, Inc.",
   "scripts": {
     "lint": "cake lint",
     "test": "cake test",
     "build": "cake build",
     "prepublish": "cake prepublish",
     "postversion": "cake build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/romancow/codecat.git"
   },
   "keywords": [
     "codekit",
@@ -25,6 +30,11 @@
     "url": "http://seanwilson.me"
   },
   "license": "MIT",
+  "licenseUrl": "https://raw.githubusercontent.com/romancow/codecat/master/LICENSE.txt",
+  "bugs": {
+    "url": "https://github.com/romancow/codecat/issues"
+  },
+  "homepage": "https://github.com/romancow/codecat",
   "devDependencies": {
     "chai": "^3.5.0",
     "chai-fs": "^1.0.0",
