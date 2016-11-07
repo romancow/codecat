@@ -15,6 +15,8 @@ module.exports = class CodeCat
 		Object.defineProperties this,
 			source:
 				value: source
+			options:
+				value: options
 			prefix:
 				value: prefix
 			commenter:
@@ -52,13 +54,9 @@ module.exports = class CodeCat
 		@concatTo stream, options, (error) -> callback?(concatted)
 
 	concatTo: (dest, options, callback) ->
-		[{separator = EOL}, callback] = discernOptions(options, callback)
-		@findConcats relative: true, (concats) =>
-			error = null
-			paths = [concats.prepend..., @source, concats.append...]
-			ensureStream dest, defaultEncoding: @encoding, (stream) ->
-				joinFiles(paths, @encoding, separator, stream)
-				stream.end -> callback?(error)
+		[options, callback] = discernOptions(options, callback)
+		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
+			concatToStream.call(this, stream, options, -> end(callback))
 
 	getRelativePath: (file) ->
 		sourceDir = Path.dirname(@source)
@@ -76,19 +74,36 @@ module.exports = class CodeCat
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
 
-	joinFiles = (paths, encoding, separator, stream) ->
-		paths.forEach (path, notFirst) ->
+	concatToStream = (stream, options, callback) ->
+		{recursive = true} = options
+		{encoding, source} = this
+		@findConcats relative: true, (concats) ->
+			error = null
+			concats = mapConcats(concats, (c) => new CodeCat(c, @options)) if recursive
+			paths = [concats.prepend..., source, concats.append...]
+			joinFiles paths, encoding, stream, options, -> callback?(error)
+	
+	joinFiles = (files, encoding, stream, options = {}, finishedFn) ->
+		{separator = EOL} = options
+		callbackForEach files, finishedFn, (file, notFirst, done) ->
 			output = (notFirst and separator) or ''
-			output += readFileSync(path, encoding: encoding)
-			stream.write(output)
+			writeEndCb =
+				if file instanceof CodeCat
+					-> concatToStream.call(file, stream, options, done)
+				else
+					output += readFileSync(file, encoding: encoding)
+					done
+			stream.write(output, encoding, writeEndCb)
 
 	ensureStream = (dest, options, fn) ->
 		[options, fn] = discernOptions(options, fn)
 		if isString(dest)
 			stream = createWriteStream(dest, options)
-			stream.once('open', -> fn(stream))
+			end = (endCb) -> stream.end(endCb)
+			stream.once('open', -> fn(stream, end))
 		else
-			fn(dest)
+			end = (endCb) -> endCb?()
+			fn(dest, end)
 
 	mapConcats = (concats, map, thisArg) ->
 		mapped = {}
@@ -109,3 +124,19 @@ module.exports = class CodeCat
 			[{}, options]
 		else
 			[options ? {}, fn]
+
+	# this method calls the given callback for each item in the collection, then calls
+	# the "done" method once each callback has called their given "done" methods
+	callbackForEach = (collection, done, callback) ->
+		[total, current] = [collection.length, 0]
+		do callbackCurrent = ->
+			item = collection[current]
+			called = false
+			callback item, current, (error) ->
+				console.error(error) if error?
+				unless called
+					called = true
+					if ++current >= total
+						done()
+					else
+						callbackCurrent()
