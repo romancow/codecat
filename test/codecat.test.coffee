@@ -26,9 +26,13 @@ describe 'CodeCat', ->
 				var main = true;
 				'''
 			'prepend1.js': 'var prepend1 = true;'
-			'append1.js': 'var append1 = true;'
+			'append1.js': '''
+				// @codecat-prepend "prepend3.js"
+				var append1 = true;
+				'''
 			'prepend2.js': 'var prepend2 = true;'
 			'append2.js': 'var append2 = true;'
+			'prepend3.js': 'var prepend3 = true;'
 
 		describe '#findConcats', ->
 
@@ -58,7 +62,7 @@ describe 'CodeCat', ->
 						expect(result).to.startWith(prepended)
 
 			it 'appends files contents', (done) ->
-				appended = ['append1.js', 'append2.js']
+				appended = ['prepend3.js', 'append1.js', 'append2.js']
 					.map (name) -> tempFiles[name]
 					.join('\n')
 				@subject.concat (result) ->
@@ -90,7 +94,7 @@ describe 'CodeCat', ->
 						expect(@fileContent).to.startWith(prepended)
 
 			it 'appends files', (done) ->
-				appended = ['append1.js', 'append2.js']
+				appended = ['prepend3.js', 'append1.js', 'append2.js']
 					.map (name) -> tempFiles[name]
 					.join('\n')
 				@subject.concatTo @destination, =>
@@ -102,17 +106,21 @@ describe 'CodeCat', ->
 
 		tempFiles = useTempFiles
 			'main.coffee': '''
-				# @codecat-prepend "prepend1.coffee"
-				# @codecat-append "append1.coffee"
-				# @codecat-prepend "prepend2.coffee"
-				# @codecat-append "append2.coffee"
+				# @codecat-prepend 'prepend1.coffee'
+				# @codecat-append 'append1.coffee'
+				# @codecat-prepend 'prepend2.coffee'
+				# @codecat-append 'append2.coffee'
 				
 				main = true
 				'''
 			'prepend1.coffee': 'prepend1 = true'
-			'append1.coffee': 'append1 = true'
+			'append1.coffee': '''
+				# @codecat-prepend 'prepend3.coffee'
+				append1 = true
+				'''
 			'prepend2.coffee': 'prepend2 = true'
 			'append2.coffee': 'append2 = true'
+			'prepend3.coffee': 'prepend3 = true'
 
 		describe '#findConcats', ->
 
@@ -142,7 +150,7 @@ describe 'CodeCat', ->
 						expect(result).to.startWith(prepended)
 
 			it 'appends files contents', (done) ->
-				appended = ['append1.coffee', 'append2.coffee']
+				appended = ['prepend3.coffee', 'append1.coffee', 'append2.coffee']
 					.map (name) -> tempFiles[name]
 					.join('\n')
 				@subject.concat (result) ->
@@ -174,7 +182,7 @@ describe 'CodeCat', ->
 						expect(@fileContent).to.startWith(prepended)
 
 			it 'appends files', (done) ->
-				appended = ['append1.coffee', 'append2.coffee']
+				appended = ['prepend3.coffee', 'append1.coffee', 'append2.coffee']
 					.map (name) -> tempFiles[name]
 					.join('\n')
 				@subject.concatTo @destination, =>

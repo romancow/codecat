@@ -17,17 +17,21 @@ module.exports = class CodeCat
 				value: source
 			prefix:
 				value: prefix
-			commenter:
-				value: commenter
 			encoding:
 				value: encoding
 			prependRegexp:
 				value: getDirectiveRegExp('prepend')
 			appendRegexp:
 				value: getDirectiveRegExp('append')
+			Relative:
+				value: class extends CodeCat
+					constructor: (src) ->
+						sourceDir = Path.dirname(source)
+						relSrc = Path.join(sourceDir, src)
+						super(relSrc, options)
 
 	findConcats: (options, callback) ->
-		[{relative = false}, callback] = discernOptions(options, callback)
+		[options, callback] = discernOptions(options, callback)
 		{prepend, append} = concats = {prepend: [], append: []}
 		lineReader = Readline.createInterface
 			input: createReadStream(@source, encoding: @encoding)
@@ -38,9 +42,7 @@ module.exports = class CodeCat
 			else if match = line.match(@appendRegexp)?[2]
 				append.push(match)
 
-		lineReader.on 'close', =>
-			concats = mapConcats(concats, @getRelativePath, this) if relative
-			callback?(concats)
+		lineReader.on 'close', -> callback?(concats)
 
 	concat: (options, callback) ->
 		[options, callback] = discernOptions(options, callback)
@@ -52,18 +54,15 @@ module.exports = class CodeCat
 		@concatTo stream, options, (error) -> callback?(concatted)
 
 	concatTo: (dest, options, callback) ->
-		[{separator = EOL}, callback] = discernOptions(options, callback)
-		@findConcats relative: true, (concats) =>
-			error = null
-			paths = [concats.prepend..., @source, concats.append...]
-			ensureStream dest, defaultEncoding: @encoding, (stream) ->
-				joinFiles(paths, @encoding, separator, stream)
-				stream.end -> callback?(error)
+		[options, callback] = discernOptions(options, callback)
+		{recursive = true} = options
+		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
+			@findConcats (concats) =>
+				error = null
+				concats = mapConcats(concats, newRelative, this) if recursive
+				paths = [concats.prepend..., @source, concats.append...]
+				joinFiles paths, @encoding, stream, options, -> callback?(error)
 
-	getRelativePath: (file) ->
-		sourceDir = Path.dirname(@source)
-		Path.join(sourceDir, file)
-	
 	@Commenters =
 		'': '//'
 		js: '//'
@@ -75,20 +74,31 @@ module.exports = class CodeCat
 		ext = Path.extname(source).slice(1)
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
+	
+	newRelative = (source) ->
+		new @Relative(source)
 
-	joinFiles = (paths, encoding, separator, stream) ->
-		paths.forEach (path, notFirst) ->
+	joinFiles = (files, encoding, stream, options = {}, finishedFn) ->
+		{separator = EOL} = options
+		callbackForEach files, finishedFn, (file, notFirst, done) ->
 			output = (notFirst and separator) or ''
-			output += readFileSync(path, encoding: encoding)
-			stream.write(output)
+			writeEndCb =
+				if file instanceof CodeCat
+					-> file.concatTo(stream, options, done)
+				else
+					output += readFileSync(file, encoding: encoding)
+					done
+			stream.write(output, encoding, writeEndCb)
 
 	ensureStream = (dest, options, fn) ->
 		[options, fn] = discernOptions(options, fn)
 		if isString(dest)
 			stream = createWriteStream(dest, options)
-			stream.once('open', -> fn(stream))
+			end = (endCb) -> stream.end(endCb)
+			stream.once('open', -> fn(stream, end))
 		else
-			fn(dest)
+			end = (endCb) -> endCb?()
+			fn(dest, end)
 
 	mapConcats = (concats, map, thisArg) ->
 		mapped = {}
@@ -109,3 +119,19 @@ module.exports = class CodeCat
 			[{}, options]
 		else
 			[options ? {}, fn]
+
+	# this method calls the given callback for each item in the collection, then calls
+	# the "done" method once each callback has called their given "done" methods
+	callbackForEach = (collection, done, callback) ->
+		[total, current] = [collection.length, 0]
+		do callbackCurrent = ->
+			item = collection[current]
+			called = false
+			callback item, current, (error) ->
+				console.error(error) if error?
+				unless called
+					called = true
+					if ++current >= total
+						done()
+					else
+						callbackCurrent()
