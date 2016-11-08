@@ -1,6 +1,6 @@
 {EOL} = require 'os'
 Readline = require 'readline'
-{readFileSync, createReadStream, createWriteStream} = require 'fs'
+{readFileSync, createReadStream, createWriteStream, statSync} = require 'fs'
 {Writable} = require 'stream'
 Path = require 'path'
 
@@ -26,8 +26,7 @@ module.exports = class CodeCat
 			Relative:
 				value: class extends CodeCat
 					constructor: (src) ->
-						sourceDir = Path.dirname(source)
-						relSrc = Path.join(sourceDir, src)
+						relSrc = getRelativePath(source, src)
 						super(relSrc, options)
 
 	findConcats: (options, callback) ->
@@ -59,7 +58,7 @@ module.exports = class CodeCat
 		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
 			@findConcats (concats) =>
 				error = null
-				concats = mapConcats(concats, newRelative, this) if recursive
+				concats = mapConcats(concats, mapRelative, this) if recursive
 				paths = [concats.prepend..., @source, concats.append...]
 				joinFiles paths, @encoding, stream, options, -> callback?(error)
 
@@ -75,8 +74,21 @@ module.exports = class CodeCat
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
 	
-	newRelative = (source) ->
-		new @Relative(source)
+	mapRelative = (source) ->
+		stats =
+			try
+				statSync getRelativePath(@source, source)
+			catch
+				null
+		if stats?.isFile()
+			new @Relative(source)
+		# else if stats?.isDirectory()
+		else
+			try
+				require.resolve(source)
+			catch
+				console.error("Invalid file or node module \"#{source}\"")
+				null
 
 	joinFiles = (files, encoding, stream, options = {}, finishedFn) ->
 		{separator = EOL} = options
@@ -103,10 +115,16 @@ module.exports = class CodeCat
 	mapConcats = (concats, map, thisArg) ->
 		mapped = {}
 		for own type, files of concats
-			mapped[type] = files.map(map, thisArg)
+			mapped[type] = files
+				.map(map, thisArg)
+				.filter (c) -> c?
 		return mapped
 
 	# General utility functions
+
+	getRelativePath = (src, rel) ->
+		srcDir = Path.dirname(src)
+		Path.join(srcDir, rel)
 
 	regexpEscape = (str) ->
 		str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')
