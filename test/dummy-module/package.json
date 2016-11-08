@@ -1,0 +1,17 @@
+{
+  "name": "dummy-module",
+  "version": "1.0.0",
+  "description": "A dummy node module for testing",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dummy",
+    "node",
+    "test",
+    "module"
+  ],
+  "author": "scw@adque.com",
+  "license": "MIT"
+}
