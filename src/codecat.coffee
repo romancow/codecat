@@ -19,8 +19,6 @@ module.exports = class CodeCat
 				value: options
 			prefix:
 				value: prefix
-			commenter:
-				value: commenter
 			encoding:
 				value: encoding
 			prependRegexp:
@@ -55,13 +53,18 @@ module.exports = class CodeCat
 
 	concatTo: (dest, options, callback) ->
 		[options, callback] = discernOptions(options, callback)
+		{recursive = true} = options
 		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
-			concatToStream.call(this, stream, options, -> end(callback))
+			@findConcats relative: true, (concats) =>
+				error = null
+				concats = mapConcats(concats, (c) => new CodeCat(c, @options)) if recursive
+				paths = [concats.prepend..., @source, concats.append...]
+				joinFiles paths, @encoding, stream, options, -> callback?(error)
 
 	getRelativePath: (file) ->
 		sourceDir = Path.dirname(@source)
 		Path.join(sourceDir, file)
-	
+			
 	@Commenters =
 		'': '//'
 		js: '//'
@@ -73,15 +76,6 @@ module.exports = class CodeCat
 		ext = Path.extname(source).slice(1)
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
-
-	concatToStream = (stream, options, callback) ->
-		{recursive = true} = options
-		{encoding, source} = this
-		@findConcats relative: true, (concats) ->
-			error = null
-			concats = mapConcats(concats, (c) => new CodeCat(c, @options)) if recursive
-			paths = [concats.prepend..., source, concats.append...]
-			joinFiles paths, encoding, stream, options, -> callback?(error)
 	
 	joinFiles = (files, encoding, stream, options = {}, finishedFn) ->
 		{separator = EOL} = options
@@ -89,7 +83,7 @@ module.exports = class CodeCat
 			output = (notFirst and separator) or ''
 			writeEndCb =
 				if file instanceof CodeCat
-					-> concatToStream.call(file, stream, options, done)
+					-> file.concatTo(stream, options, done)
 				else
 					output += readFileSync(file, encoding: encoding)
 					done
