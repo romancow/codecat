@@ -15,8 +15,6 @@ module.exports = class CodeCat
 		Object.defineProperties this,
 			source:
 				value: source
-			options:
-				value: options
 			prefix:
 				value: prefix
 			encoding:
@@ -25,9 +23,15 @@ module.exports = class CodeCat
 				value: getDirectiveRegExp('prepend')
 			appendRegexp:
 				value: getDirectiveRegExp('append')
+			Relative:
+				value: class extends CodeCat
+					constructor: (src) ->
+						sourceDir = Path.dirname(source)
+						relSrc = Path.join(sourceDir, src)
+						super(relSrc, options)
 
 	findConcats: (options, callback) ->
-		[{relative = false}, callback] = discernOptions(options, callback)
+		[options, callback] = discernOptions(options, callback)
 		{prepend, append} = concats = {prepend: [], append: []}
 		lineReader = Readline.createInterface
 			input: createReadStream(@source, encoding: @encoding)
@@ -38,9 +42,7 @@ module.exports = class CodeCat
 			else if match = line.match(@appendRegexp)?[2]
 				append.push(match)
 
-		lineReader.on 'close', =>
-			concats = mapConcats(concats, @getRelativePath, this) if relative
-			callback?(concats)
+		lineReader.on 'close', -> callback?(concats)
 
 	concat: (options, callback) ->
 		[options, callback] = discernOptions(options, callback)
@@ -55,15 +57,11 @@ module.exports = class CodeCat
 		[options, callback] = discernOptions(options, callback)
 		{recursive = true} = options
 		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
-			@findConcats relative: true, (concats) =>
+			@findConcats (concats) =>
 				error = null
-				concats = mapConcats(concats, (c) => new CodeCat(c, @options)) if recursive
+				concats = mapConcats(concats, (c) => new @Relative(c)) if recursive
 				paths = [concats.prepend..., @source, concats.append...]
 				joinFiles paths, @encoding, stream, options, -> callback?(error)
-
-	getRelativePath: (file) ->
-		sourceDir = Path.dirname(@source)
-		Path.join(sourceDir, file)
 			
 	@Commenters =
 		'': '//'
