@@ -59,10 +59,10 @@ module.exports = class CodeCat
 		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
 			@findConcats (concats) =>
 				error = null
-				concats = mapConcats(concats, (c) => new @Relative(c)) if recursive
+				concats = mapConcats(concats, newRelative, this) if recursive
 				paths = [concats.prepend..., @source, concats.append...]
 				joinFiles paths, @encoding, stream, options, -> callback?(error)
-			
+
 	@Commenters =
 		'': '//'
 		js: '//'
@@ -75,6 +75,9 @@ module.exports = class CodeCat
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
 	
+	newRelative = (source) ->
+		new @Relative(source)
+
 	joinFiles = (files, encoding, stream, options = {}, finishedFn) ->
 		{separator = EOL} = options
 		callbackForEach files, finishedFn, (file, notFirst, done) ->
