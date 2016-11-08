@@ -33,6 +33,10 @@ describe 'CodeCat', ->
 			'prepend2.js': 'var prepend2 = true;'
 			'append2.js': 'var append2 = true;'
 			'prepend3.js': 'var prepend3 = true;'
+			'withModule.js': '''
+				// @codecat-prepend "dummy-module"
+				var withModule = true;
+				'''
 
 		describe '#findConcats', ->
 
@@ -100,6 +104,20 @@ describe 'CodeCat', ->
 				@subject.concatTo @destination, =>
 					done.check =>
 						expect(@fileContent).to.endWith(appended)
+			
+		describe 'including a node module', ->
+			given 'source', -> './test/temp/withModule.js'
+
+			it 'concats the node module', (done) ->
+				@subject.concat (result) ->
+					done.check ->
+						expect(result).to.equal '''
+							var dummyModule = true;
+
+							// @codecat-prepend "dummy-module"
+							var withModule = true;
+							'''
+
 
 	describe 'with coffeescript', ->
 		given 'source', -> './test/temp/main.coffee'
