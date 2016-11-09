@@ -69,7 +69,7 @@ describe 'CodeCat', ->
 				appended = ['prepend3.js', 'append1.js', 'append2.js']
 					.map (name) -> tempFiles[name]
 					.join('\n')
-				@subject.concat (result) ->
+				@subject.concat recursive: true, (result) ->
 					done.check ->
 						expect(result).to.endWith(appended)
 			
@@ -101,7 +101,7 @@ describe 'CodeCat', ->
 				appended = ['prepend3.js', 'append1.js', 'append2.js']
 					.map (name) -> tempFiles[name]
 					.join('\n')
-				@subject.concatTo @destination, =>
+				@subject.concatTo @destination, recursive: true, =>
 					done.check =>
 						expect(@fileContent).to.endWith(appended)
 			
@@ -171,7 +171,7 @@ describe 'CodeCat', ->
 				appended = ['prepend3.coffee', 'append1.coffee', 'append2.coffee']
 					.map (name) -> tempFiles[name]
 					.join('\n')
-				@subject.concat (result) ->
+				@subject.concat recursive: true, (result) ->
 					done.check ->
 						expect(result).to.endWith(appended)
 			
@@ -203,6 +203,6 @@ describe 'CodeCat', ->
 				appended = ['prepend3.coffee', 'append1.coffee', 'append2.coffee']
 					.map (name) -> tempFiles[name]
 					.join('\n')
-				@subject.concatTo @destination, =>
+				@subject.concatTo @destination, recursive: true, =>
 					done.check =>
 						expect(@fileContent).to.endWith(appended)

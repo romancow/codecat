@@ -23,11 +23,6 @@ module.exports = class CodeCat
 				value: getDirectiveRegExp('prepend')
 			appendRegexp:
 				value: getDirectiveRegExp('append')
-			Relative:
-				value: class extends CodeCat
-					constructor: (src) ->
-						relSrc = getRelativePath(source, src)
-						super(relSrc, options)
 
 	findConcats: (options, callback) ->
 		[options, callback] = discernOptions(options, callback)
@@ -54,13 +49,33 @@ module.exports = class CodeCat
 
 	concatTo: (dest, options, callback) ->
 		[options, callback] = discernOptions(options, callback)
-		{recursive = true} = options
+		{recursive = false} = options
 		ensureStream dest, defaultEncoding: @encoding, (stream, end) =>
 			@findConcats (concats) =>
 				error = null
-				concats = mapConcats(concats, mapRelative, this) if recursive
-				paths = [concats.prepend..., @source, concats.append...]
+				resConcats = @_resolveConcats(concats, recursive)
+				paths = [resConcats.prepend..., @source, resConcats.append...]
 				joinFiles paths, @encoding, stream, options, -> callback?(error)
+
+	_resolveConcats: (concats, recursive) ->
+		resolved = {}
+		for own type, files of concats
+			resolved[type] = files
+				.map((c) => @_resolveConcat(c, recursive))
+				.filter (c) -> c?
+		return resolved
+
+	_resolveConcat: (concat, recursive) ->
+		srcDir = Path.dirname(@source)
+		relPath = Path.join(srcDir, concat)
+		stats = tryOrNull -> statSync(relPath)
+		unless stats?.isFile()
+			resNode = -> require.resolve(concat)
+			tryOrNull(resNode, "Invalid file or node module \"#{concat}\"")
+		else if recursive
+			new CodeCat(relPath, @options)
+		else
+			relPath
 
 	@Commenters =
 		'': '//'
@@ -73,22 +88,6 @@ module.exports = class CodeCat
 		ext = Path.extname(source).slice(1)
 		commenter = CodeCat.Commenters[ext]
 		if commenter? then regexpEscape(commenter) else ''
-	
-	mapRelative = (source) ->
-		stats =
-			try
-				statSync getRelativePath(@source, source)
-			catch
-				null
-		if stats?.isFile()
-			new @Relative(source)
-		# else if stats?.isDirectory()
-		else
-			try
-				require.resolve(source)
-			catch
-				console.error("Invalid file or node module \"#{source}\"")
-				null
 
 	joinFiles = (files, encoding, stream, options = {}, finishedFn) ->
 		{separator = EOL} = options
@@ -112,14 +111,6 @@ module.exports = class CodeCat
 			end = (endCb) -> endCb?()
 			fn(dest, end)
 
-	mapConcats = (concats, map, thisArg) ->
-		mapped = {}
-		for own type, files of concats
-			mapped[type] = files
-				.map(map, thisArg)
-				.filter (c) -> c?
-		return mapped
-
 	# General utility functions
 
 	getRelativePath = (src, rel) ->
@@ -137,6 +128,13 @@ module.exports = class CodeCat
 			[{}, options]
 		else
 			[options ? {}, fn]
+
+	tryOrNull = (tryFn, error) ->
+		try
+			tryFn()
+		catch
+			console.log(error) if error?
+			null
 
 	# this method calls the given callback for each item in the collection, then calls
 	# the "done" method once each callback has called their given "done" methods
