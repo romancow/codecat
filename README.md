@@ -2,8 +2,18 @@
 
 A simple, free, and easy to use tool for combining code.
 
-[[Overview](#overview) | [Installation](#installation) | [Use & Examples](#use--examples)]
-
+- [Overview](#overview)
+- [Installation](#installation)
+	- [NPM](#npm)
+	- [Yarn](#yarn)
+	- [Download](#download)
+- [Use & Examples](#use--examples)
+	- [Directives](#directives)
+	- [Processing](#processing)
+		- [concat](#concat)
+		- [concatTo](#concatto)
+		- [Options](#options)
+		
 
 ## Overview
 
