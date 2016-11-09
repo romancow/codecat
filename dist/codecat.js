@@ -15,7 +15,7 @@
   Path = require('path');
 
   module.exports = CodeCat = (function() {
-    var callbackForEach, discernOptions, ensureStream, getRelativePath, getSourceCommenter, isString, joinFiles, regexpEscape, tryOrNull;
+    var callbackForEach, discernOptions, ensureStream, getSourceCommenter, isString, joinFiles, regexpEscape, tryOrNull;
 
     function CodeCat(source, options) {
       var commenter, encoding, getDirectiveRegExp, prefix, ref1, ref2, ref3;
@@ -109,6 +109,12 @@
       })(this));
     };
 
+    CodeCat.Commenters = {
+      '': '//',
+      js: '//',
+      coffee: '#'
+    };
+
     CodeCat.prototype._resolveConcats = function(concats, recursive) {
       var files, resolved, type;
       resolved = {};
@@ -143,12 +149,6 @@
       } else {
         return relPath;
       }
-    };
-
-    CodeCat.Commenters = {
-      '': '//',
-      js: '//',
-      coffee: '#'
     };
 
     getSourceCommenter = function(source) {
@@ -197,12 +197,6 @@
         };
         return fn(dest, end);
       }
-    };
-
-    getRelativePath = function(src, rel) {
-      var srcDir;
-      srcDir = Path.dirname(src);
-      return Path.join(srcDir, rel);
     };
 
     regexpEscape = function(str) {

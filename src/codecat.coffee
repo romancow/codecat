@@ -57,6 +57,13 @@ module.exports = class CodeCat
 				paths = [resConcats.prepend..., @source, resConcats.append...]
 				joinFiles paths, @encoding, stream, options, -> callback?(error)
 
+	@Commenters =
+		'': '//'
+		js: '//'
+		coffee: '#'
+
+	# Private helper functions
+
 	_resolveConcats: (concats, recursive) ->
 		resolved = {}
 		for own type, files of concats
@@ -76,13 +83,6 @@ module.exports = class CodeCat
 			new CodeCat(relPath, @options)
 		else
 			relPath
-
-	@Commenters =
-		'': '//'
-		js: '//'
-		coffee: '#'
-
-	# Private helper functions
 
 	getSourceCommenter = (source) ->
 		ext = Path.extname(source).slice(1)
@@ -112,10 +112,6 @@ module.exports = class CodeCat
 			fn(dest, end)
 
 	# General utility functions
-
-	getRelativePath = (src, rel) ->
-		srcDir = Path.dirname(src)
-		Path.join(srcDir, rel)
 
 	regexpEscape = (str) ->
 		str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')
