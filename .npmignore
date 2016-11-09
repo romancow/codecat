@@ -1,0 +1,13 @@
+#configuration files
+Cakefile
+coffeelint.json
+yarn.lock
+
+# coffee source folder
+src/
+
+# test folder
+test/
+
+# vscode settings
+.vscode/
